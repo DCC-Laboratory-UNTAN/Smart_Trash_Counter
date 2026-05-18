@@ -12,6 +12,9 @@
   - [SSD MobileNet (Jetson-Inference Docker)](#1-ssd-mobilenet--jetson-inference-docker)
   - [YOLOv8 (Ultralytics Docker)](#2-yolov8--ultralytics-docker)
 - [Docker Convenience Aliases](#docker-convenience-aliases)
+- [Running the Experiments](#running-the-experiments)
+  - [YOLO11n Experiments](#yolo11n-experiments)
+  - [SSD MobileNetV1 Experiments](#ssd-mobilenetv1-experiments)
 - [Custom Object Training](#custom-object-training)
 - [License](#license)
 - [Team](#team)
@@ -23,7 +26,7 @@
 The **Smart Trash Counter** uses real-time object detection models deployed on an NVIDIA Jetson device to identify and count trash objects in a given environment. Two model architectures are supported:
 
 - **SSD MobileNetV1** — via the [`jetson-inference`](https://github.com/dusty-nv/jetson-inference) framework
-- **YOLOv8** — via the [Ultralytics](https://docs.ultralytics.com/) framework with TensorRT acceleration
+- **YOLOv8 / YOLO11n** — via the [Ultralytics](https://docs.ultralytics.com/) framework with TensorRT acceleration
 
 Both models were trained using custom datasets sourced from [Roboflow](https://roboflow.com/) and can be fine-tuned using the provided training notebooks.
 
@@ -33,10 +36,20 @@ Both models were trained using custom datasets sourced from [Roboflow](https://r
 
 ```
 Smart_Trash_Counter/
+├── Experiment/
+│   ├── Exp_YOLO11n/
+│   |   ├── Test_Image/            # Sample images for model validation
+│   │   ├── detect_folder.py       # Batch image detection using YOLO TensorRT engine
+│   │   ├── model_converter.py     # Converts YOLO .pt model to TensorRT .engine format
+│   │   └── stream_test.py         # Real-time trash counting from RTSP stream or video file
+│   └── Exp_SSDMobilenetV1/
+│       ├── Test_Image/            # Sample images for model validation
+│       ├── detect_image_folder.py # Batch image detection using SSD MobileNet
+│       └── stream_test.py         # Real-time trash counting from RTSP stream or video file
 ├── TrainingNotebook/
-│   ├── Test_Image/                   # Sample images for model validation
-│   ├── SSDMobilenetV1_Roboflow.ipynb # Training notebook for SSD MobileNetV1
-│   └── YOLO_Roboflow.ipynb           # Training notebook for YOLOv8
+│   ├── Test_Image/                # Sample images for model validation
+│   ├── SSDMobilenetV1_Roboflow.ipynb  # Training notebook for SSD MobileNetV1
+│   └── YOLO_Roboflow.ipynb            # Training notebook for YOLOv8 / YOLO11n
 ├── LICENSE
 └── README.md
 ```
@@ -63,7 +76,7 @@ docker/run.sh
 
 ---
 
-### 2. YOLOv8 — Ultralytics Docker
+### 2. YOLOv8 / YOLO11n — Ultralytics Docker
 
 Follow the official [Ultralytics Jetson guide](https://docs.ultralytics.com/guides/nvidia-jetson#use-tensorrt-on-nvidia-jetson).
 
@@ -121,18 +134,131 @@ sudo reboot
 
 | Command | Description |
 |---|---|
-| `docker_yolo` | Start and enter the YOLOv8 container |
+| `docker_yolo` | Start and enter the YOLOv8 / YOLO11n container |
 | `docker_ssd` | Start and enter the SSD MobileNet container |
 | `stop_yolo` | Stop the YOLOv8 container |
 | `stop_ssd` | Stop the SSD MobileNet container |
 
 ---
 
-## Deploying Code to Containers
+## Running the Experiments
 
-After Docker is set up, copy the necessary inference scripts and model files into the respective containers.
+All experiment scripts are located in the [`/Experiment`](./Experiment/) directory. Copy the relevant scripts and your trained model files into the appropriate Docker container before running.
 
-> 🚧 **Work in Progress** — Deployment instructions will be added in a future update.
+> **Note:** Edit the `CONFIG` section at the top of each script to point to your model file, input directory, and adjust thresholds as needed.
+
+---
+
+### YOLO11n Experiments
+
+All scripts below must be run **inside the Ultralytics Docker container**.
+
+#### Step 0 — Convert your trained model to TensorRT (run once)
+
+Place your `best.pt` file in the same directory as the script, then run:
+
+```bash
+python3 model_converter.py
+```
+
+This exports `best.pt` to `best.engine` (TensorRT FP16), optimized for inference on Jetson. The output file is used by all other YOLO scripts.
+
+---
+
+#### Batch Image Detection
+
+Runs detection on all images in a folder and saves annotated results.
+
+```bash
+python3 detect_folder.py
+```
+
+Expected folder layout:
+
+```
+Exp_YOLO11n/
+├── best.engine       # TensorRT model
+├── Test_Image/       # Input images (.jpg / .png / .bmp)
+├── detect_folder.py
+└── results_yolo/     # Output images (auto-created)
+```
+
+Detection results and per-image timing are printed to the terminal. A summary of average FPS and total detections is shown at the end.
+
+---
+
+#### Real-Time Stream Detection & Counting
+
+Counts trash objects crossing a virtual line in a live RTSP stream or video file.
+
+```bash
+# From an RTSP stream
+python3 stream_test.py --rtsp=rtsp://user:pass@192.168.1.x:554/stream
+
+# From a local video file
+python3 stream_test.py --video=trash_test.mp4
+```
+
+Optional arguments:
+
+| Argument | Default | Description |
+|---|---|---|
+| `--threshold` | `0.50` | Detection confidence threshold |
+| `--line-pos` | `0.55` | Virtual counting line position (0.0 = top, 1.0 = bottom) |
+| `--headless` | off | Disable the OpenCV display window |
+
+Annotated video is saved to the `recordings/` folder. Count logs are saved to `trash_counts_yolo.json`.
+
+---
+
+### SSD MobileNetV1 Experiments
+
+All scripts below must be run **inside the Jetson-Inference Docker container**. Place your `ssd-mobilenet.onnx`, `ssd-mobilenet.onnx.data` and `labels.txt` model files in the same directory as the scripts.
+
+---
+
+#### Batch Image Detection
+
+Runs detection on all images in a folder and saves annotated results.
+
+```bash
+python3 detect_image_folder.py
+```
+
+Expected folder layout:
+
+```
+Exp_SSDMobilenetV1/
+├── ssd-mobilenet.onnx   # Trained SSD model
+├── labels.txt           # Class labels
+├── Test_Image/          # Input images
+├── detect_image_folder.py
+└── results_ssd/         # Output images (auto-created)
+```
+
+---
+
+#### Real-Time Stream Detection & Counting
+
+Counts trash objects crossing a virtual line in a live RTSP stream or video file.
+
+```bash
+# From an RTSP stream
+python3 stream_test.py --rtsp=rtsp://user:pass@192.168.1.x:554/stream
+
+# From a local video file
+python3 stream_test.py --video=trash_test.mp4
+```
+
+Optional arguments:
+
+| Argument | Default | Description |
+|---|---|---|
+| `--threshold` | `0.50` | Detection confidence threshold |
+| `--line-pos` | `0.55` | Virtual counting line position (0.0 = top, 1.0 = bottom) |
+| `--headless` | off | Disable the display window |
+
+Annotated video is saved to the `recordings/` folder. Count logs are saved to `trash_counts_ssd.json`.
 
 ---
 
@@ -143,7 +269,7 @@ Training notebooks are located in the [`/TrainingNotebook`](./TrainingNotebook/)
 | Notebook | Model | Framework |
 |---|---|---|
 | `SSDMobilenetV1_Roboflow.ipynb` | SSD MobileNetV1 | Jetson-Inference |
-| `YOLO_Roboflow.ipynb` | YOLOv8 | Ultralytics |
+| `YOLO_Roboflow.ipynb` | YOLOv8 / YOLO11n | Ultralytics |
 
 > **Note:** Both notebooks assume the dataset is fetched via the **Roboflow API**. Adapt the data-loading section if using a different dataset source.
 

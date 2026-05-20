@@ -1,6 +1,6 @@
 # 🗑️ Smart Trash Counter
 
-> A collaborative project between the **Electrical Engineering** and **Environmental Engineering** departments, leveraging computer vision to automate trash detection and counting using SSD MobileNet and YOLOv8 on NVIDIA Jetson hardware.
+> A collaborative project between the **Electrical Engineering** and **Environmental Engineering** departments, leveraging computer vision to automate trash detection and counting using SSD MobileNet and YOLO11n on NVIDIA Jetson hardware.
 
 ---
 
@@ -26,7 +26,7 @@
 The **Smart Trash Counter** uses real-time object detection models deployed on an NVIDIA Jetson device to identify and count trash objects in a given environment. Two model architectures are supported:
 
 - **SSD MobileNetV1** — via the [`jetson-inference`](https://github.com/dusty-nv/jetson-inference) framework
-- **YOLOv8 / YOLO11n** — via the [Ultralytics](https://docs.ultralytics.com/) framework with TensorRT acceleration
+- **YOLO11n** — via the [Ultralytics](https://docs.ultralytics.com/) framework with TensorRT acceleration
 
 Both models were trained using custom datasets sourced from [Roboflow](https://roboflow.com/) and can be fine-tuned using the provided training notebooks.
 
@@ -76,7 +76,7 @@ docker/run.sh
 
 ---
 
-### 2. YOLOv8 / YOLO11n — Ultralytics Docker
+### 2. YOLO11n — Ultralytics Docker
 
 Follow the official [Ultralytics Jetson guide](https://docs.ultralytics.com/guides/nvidia-jetson#use-tensorrt-on-nvidia-jetson).
 
@@ -269,7 +269,7 @@ Training notebooks are located in the [`/TrainingNotebook`](./TrainingNotebook/)
 | Notebook | Model | Framework |
 |---|---|---|
 | `SSDMobilenetV1_Roboflow.ipynb` | SSD MobileNetV1 | Jetson-Inference |
-| `YOLO_Roboflow.ipynb` | YOLOv8 / YOLO11n | Ultralytics |
+| `YOLO_Roboflow.ipynb` | YOLO11n | Ultralytics |
 
 > **Note:** Both notebooks assume the dataset is fetched via the **Roboflow API**. Adapt the data-loading section if using a different dataset source.
 
@@ -287,5 +287,5 @@ This project is licensed under the terms specified in the [LICENSE](LICENSE) fil
 |---|---|
 | **Repository** | Smart Trash Counter |
 | **Maintained By** | DCC Laboratory Development Team × Environmental Engineering Team |
-| **Person in Charge** | HAM, ... |
+| **Person in Charge** | Dimas, Husnul, Lisa & Pangky |
 | **Year** | 2026 |
